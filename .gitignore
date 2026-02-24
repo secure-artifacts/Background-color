@@ -1,0 +1,14 @@
+# Python compilation files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# PyInstaller build files
+build/
+dist/
+*.spec
+
+# Local data cache/favorites might not be suitable for the repo if they are user-specific
+cache/
+color_data.json
+favorites.json
