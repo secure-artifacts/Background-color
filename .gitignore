@@ -9,6 +9,7 @@ dist/
 *.spec
 
 # Local data cache/favorites might not be suitable for the repo if they are user-specific
-cache/
+cache/*
+!cache/.gitkeep
 color_data.json
 favorites.json
