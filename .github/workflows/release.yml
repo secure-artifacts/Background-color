@@ -1,42 +1,63 @@
-name: Build and Release
+name: Multi-Platform Release
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*' # Trigger on tags matching v*, e.g. v1.0.0
+
+permissions:
+  contents: write
 
 jobs:
-  build:
-    runs-on: windows-latest
-    permissions:
-      id-token: write
-      contents: write
-      attestations: write
+  build-and-release:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            artifact_name: BackgroundColorViewer-Windows.exe
+            platform: windows
+          - os: macos-latest
+            artifact_name: BackgroundColorViewer-macOS
+            platform: macos
+
+    runs-on: ${{ matrix.os }}
+
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.14'
-          
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install pyinstaller packaging customtkinter requests pillow
-          
-      - name: Build Executable
-        run: |
-          python -m PyInstaller --noconfirm --onefile --windowed --name "BackgroundColorViewer" --collect-all customtkinter main.py
-          
-      - name: Attest Build Provenance
-        uses: actions/attest-build-provenance@v2
-        with:
-          subject-path: 'dist/BackgroundColorViewer.exe'
-          
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/BackgroundColorViewer.exe
-          generate_release_notes: true
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pyinstaller packaging customtkinter
+
+    - name: Build with PyInstaller (Windows)
+      if: matrix.platform == 'windows'
+      run: |
+        python -m PyInstaller --noconfirm --clean --onefile --windowed --name "BackgroundColorViewer" --collect-all customtkinter main.py
+        Move-Item dist\BackgroundColorViewer.exe dist\${{ matrix.artifact_name }}
+
+    - name: Build with PyInstaller (macOS)
+      if: matrix.platform == 'macos'
+      run: |
+        python -m PyInstaller --noconfirm --clean --onefile --windowed --name "BackgroundColorViewer" --collect-all customtkinter main.py
+        mv dist/BackgroundColorViewer dist/${{ matrix.artifact_name }}
+
+    - name: Upload Build Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: |
+          dist/${{ matrix.artifact_name }}*
+
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        files: |
+          dist/${{ matrix.artifact_name }}*
+        generate_release_notes: true
